@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>점 수집 게임</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 10px;
+            touch-action: manipulation;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
+        #info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #info p {
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .direction-btn {
+            grid-column: span 2;
+            background-color: #008CBA;
+        }
+        .direction-btn:hover {
+            background-color: #007B9A;
+        }
+        #start-btn {
+            grid-column: span 5;
+            background-color: #f44336;
+            margin-top: 10px;
+        }
+        #start-btn:hover {
+            background-color: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>점 수집 게임</h1>
+        <canvas id="canvas" width="300" height="300"></canvas>
+        <div id="info">
+            <p id="output">위치: (0, 0)</p>
+            <p id="pointsLeft">남은 점: 10</p>
+            <p id="timer">시간: 0초</p>
+        </div>
+        <div class="controls">
+            <button class="direction-btn" onclick="setDirection('위')">위</button>
+            <button class="direction-btn" onclick="setDirection('아래')">아래</button>
+            <button class="direction-btn" onclick="setDirection('왼쪽')">왼쪽</button>
+            <button class="direction-btn" onclick="setDirection('오른쪽')">오른쪽</button>
+            <button onclick="setSteps(1)">1</button>
+            <button onclick="setSteps(2)">2</button>
+            <button onclick="setSteps(3)">3</button>
+            <button onclick="setSteps(4)">4</button>
+            <button onclick="setSteps(5)">5</button>
+            <button onclick="setSteps(6)">6</button>
+            <button onclick="setSteps(7)">7</button>
+            <button onclick="setSteps(8)">8</button>
+            <button onclick="setSteps(9)">9</button>
+            <button onclick="setSteps(10)">10</button>
+            <button id="start-btn" onclick="startGame()">게임 시작</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const output = document.getElementById('output');
+        const pointsLeftElement = document.getElementById('pointsLeft');
+        const timerElement = document.getElementById('timer');
+        let x = 0, y = 0;
+        let path = [[x, y]];
+        let randomPoints = [];
+        let gameStarted = false;
+        let startTime;
+        let pointsCollected = 0;
+        let currentDirection = '';
+        let currentSteps = 0;
+
+        function drawGrid() {
+            ctx.beginPath();
+            ctx.strokeStyle = "#ddd";
+            for (let i = 0; i <= 15; i++) {
+                ctx.moveTo(i * 20, 0);
+                ctx.lineTo(i * 20, 300);
+                ctx.moveTo(0, i * 20);
+                ctx.lineTo(300, i * 20);
+            }
+            ctx.stroke();
+        }
+
+        function drawPoint() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+
+            // 랜덤 점 그리기
+            ctx.fillStyle = "#FFA500";
+            for (let point of randomPoints) {
+                ctx.beginPath();
+                ctx.arc(point[0] * 20, 300 - point[1] * 20, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // 자취 그리기
+            ctx.beginPath();
+            ctx.strokeStyle = "#4169E1";
+            ctx.lineWidth = 2;
+            ctx.moveTo(path[0][0] * 20, 300 - path[0][1] * 20);
+            for (let i = 1; i < path.length; i++) {
+                ctx.lineTo(path[i][0] * 20, 300 - path[i][1] * 20);
+            }
+            ctx.stroke();
+
+            // 현재 위치 점 그리기
+            ctx.beginPath();
+            ctx.fillStyle = "#FF0000";
+            ctx.arc(x * 20, 300 - y * 20, 7, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        function movePoint(dx, dy) {
+            if (!gameStarted) return;
+
+            x = Math.max(0, Math.min(15, x + dx));
+            y = Math.max(0, Math.min(15, y + dy));
+            path.push([x, y]);
+            drawPoint();
+            output.textContent = `위치: (${x}, ${y})`;
+
+            checkPointCollection();
+        }
+
+        function generateRandomPoints() {
+            randomPoints = [];
+            for (let i = 0; i < 10; i++) {
+                let rx, ry;
+                do {
+                    rx = Math.floor(Math.random() * 16);
+                    ry = Math.floor(Math.random() * 16);
+                } while (randomPoints.some(point => point[0] === rx && point[1] === ry) || (rx === 0 && ry === 0));
+                randomPoints.push([rx, ry]);
+            }
+        }
+
+        function checkPointCollection() {
+            for (let i = 0; i < randomPoints.length; i++) {
+                if (x === randomPoints[i][0] && y === randomPoints[i][1]) {
+                    randomPoints.splice(i, 1);
+                    pointsCollected++;
+                    pointsLeftElement.textContent = `남은 점: ${10 - pointsCollected}`;
+                    break;
+                }
+            }
+
+            if (randomPoints.length === 0) {
+                endGame();
+            }
+        }
+
+        function startGame() {
+            x = 0;
+            y = 0;
+            path = [[x, y]];
+            pointsCollected = 0;
+            generateRandomPoints();
+            drawPoint();
+            gameStarted = true;
+            startTime = Date.now();
+            updateTimer();
+            document.getElementById('start-btn').textContent = '게임 재시작';
+        }
+
+        function endGame() {
+            gameStarted = false;
+            const endTime = Date.now();
+            const timeTaken = (endTime - startTime) / 1000;
+            alert(`게임 종료! 걸린 시간: ${timeTaken.toFixed(2)}초`);
+        }
+
+        function updateTimer() {
+            if (!gameStarted) return;
+            const currentTime = Date.now();
+            const elapsedTime = (currentTime - startTime) / 1000;
+            timerElement.textContent = `시간: ${elapsedTime.toFixed(2)}초`;
+            requestAnimationFrame(updateTimer);
+        }
+
+        function setDirection(direction) {
+            currentDirection = direction;
+            if (currentSteps > 0) {
+                move();
+            }
+        }
+
+        function setSteps(steps) {
+            currentSteps = steps;
+            if (currentDirection) {
+                move();
+            }
+        }
+
+        function move() {
+            switch (currentDirection) {
+                case '위':
+                    movePoint(0, currentSteps);
+                    break;
+                case '아래':
+                    movePoint(0, -currentSteps);
+                    break;
+                case '오른쪽':
+                    movePoint(currentSteps, 0);
+                    break;
+                case '왼쪽':
+                    movePoint(-currentSteps, 0);
+                    break;
+            }
+            currentDirection = '';
+            currentSteps = 0;
+        }
+
+        drawPoint();
+    </script>
+</body>
+</html>
