@@ -3,270 +3,398 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>점 수집 게임</title>
+    <title>음성 인식 점 수집 게임</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f0f0;
             margin: 0;
             padding: 10px;
-            touch-action: manipulation;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        #game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .game-wrapper {
             background-color: white;
             border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
             padding: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        canvas {
-            border: 2px solid #333;
-            border-radius: 5px;
-        }
-        #info {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 100%;
+        }
+        #gameContainer {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        .horizontal-line, .vertical-line {
+            position: absolute;
+            background-color: rgba(52, 152, 219, 0.2);
+        }
+        .horizontal-line {
             width: 100%;
-            margin-top: 10px;
+            height: 1px;
         }
-        #info p {
-            margin: 5px 0;
-            font-weight: bold;
+        .vertical-line {
+            height: 100%;
+            width: 1px;
         }
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 5px;
-            margin-top: 10px;
+        .point, .player {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .point {
+            background-color: #e74c3c;
+            box-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+        }
+        .player {
+            background-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        .conquered {
+            background-color: #2ecc71 !important;
+            box-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
         }
         button {
-            background-color: #4CAF50;
-            border: none;
+            background-color: #3498db;
             color: white;
-            padding: 10px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 2px;
-            cursor: pointer;
+            border: none;
+            padding: 10px 15px;
             border-radius: 5px;
+            cursor: pointer;
             transition: background-color 0.3s;
+            font-size: 16px;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #2980b9;
         }
-        .direction-btn {
-            grid-column: span 2;
-            background-color: #008CBA;
+        #gameInfo, #commands {
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            padding: 10px;
         }
-        .direction-btn:hover {
-            background-color: #007B9A;
+        #gameInfo p {
+            margin: 5px 0;
+            font-size: 14px;
         }
-        #start-btn {
-            grid-column: span 5;
-            background-color: #f44336;
+        #commands {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #commands strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        #commandList {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        #commandList li {
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        #micStatus {
             margin-top: 10px;
+            font-weight: bold;
         }
-        #start-btn:hover {
-            background-color: #da190b;
+        .path-line {
+            position: absolute;
+            height: 2px;
+            background-color: rgba(52, 152, 219, 0.5);
+            transform-origin: left center;
+        }
+        .optimal-path-line {
+            position: absolute;
+            height: 2px;
+            background-color: red;
+            transform-origin: left center;
+            z-index: 10;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <h1>점 수집 게임</h1>
-        <canvas id="canvas" width="300" height="300"></canvas>
-        <div id="info">
-            <p id="output">위치: (0, 0)</p>
-            <p id="pointsLeft">남은 점: 10</p>
-            <p id="timer">시간: 0초</p>
-        </div>
-        <div class="controls">
-            <button class="direction-btn" onclick="setDirection('위')">위</button>
-            <button class="direction-btn" onclick="setDirection('아래')">아래</button>
-            <button class="direction-btn" onclick="setDirection('왼쪽')">왼쪽</button>
-            <button class="direction-btn" onclick="setDirection('오른쪽')">오른쪽</button>
-            <button onclick="setSteps(1)">1</button>
-            <button onclick="setSteps(2)">2</button>
-            <button onclick="setSteps(3)">3</button>
-            <button onclick="setSteps(4)">4</button>
-            <button onclick="setSteps(5)">5</button>
-            <button onclick="setSteps(6)">6</button>
-            <button onclick="setSteps(7)">7</button>
-            <button onclick="setSteps(8)">8</button>
-            <button onclick="setSteps(9)">9</button>
-            <button onclick="setSteps(10)">10</button>
-            <button id="start-btn" onclick="startGame()">게임 시작</button>
+    <div class="game-wrapper">
+        <div id="gameContainer"></div>
+        <div id="controls">
+            <button onclick="startGame()">게임 시작</button>
+            <button onclick="showOptimalPath()">인공지능최적길</button>
+            <div id="gameInfo">
+                <p id="timer">시간: 0.00초</p>
+                <p id="remainingPoints">남은 점: 8개</p>
+                <p id="playerPosition">위치: (1,1)</p>
+            </div>
+            <div id="commands">
+                <strong>음성 명령 기록:</strong>
+                <ul id="commandList"></ul>
+            </div>
+            <p id="micStatus">마이크 상태: 대기 중</p>
         </div>
     </div>
-
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const output = document.getElementById('output');
-        const pointsLeftElement = document.getElementById('pointsLeft');
+        const gameContainer = document.getElementById('gameContainer');
         const timerElement = document.getElementById('timer');
-        let x = 0, y = 0;
-        let path = [[x, y]];
-        let randomPoints = [];
-        let gameStarted = false;
+        const remainingPointsElement = document.getElementById('remainingPoints');
+        const playerPositionElement = document.getElementById('playerPosition');
+        const commandListElement = document.getElementById('commandList');
+        const micStatusElement = document.getElementById('micStatus');
+        let points = [];
+        let playerPosition = { x: 1, y: 1 };
+        let timer;
         let startTime;
-        let pointsCollected = 0;
-        let currentDirection = '';
-        let currentSteps = 0;
+        let commandIndex = 1;
+        let gameStarted = false;
+        let lastProcessedCommand = '';
+        let lastCommandTime = 0;
+        let interimCommand = '';
+        let optimalPath = [];
 
-        function drawGrid() {
-            ctx.beginPath();
-            ctx.strokeStyle = "#ddd";
-            for (let i = 0; i <= 15; i++) {
-                ctx.moveTo(i * 20, 0);
-                ctx.lineTo(i * 20, 300);
-                ctx.moveTo(0, i * 20);
-                ctx.lineTo(300, i * 20);
+        function createGrid() {
+            gameContainer.innerHTML = '';
+            for (let i = 0; i <= 10; i++) {
+                const hLine = document.createElement('div');
+                hLine.classList.add('horizontal-line');
+                hLine.style.top = `${i * 30}px`;
+                gameContainer.appendChild(hLine);
+                
+                const vLine = document.createElement('div');
+                vLine.classList.add('vertical-line');
+                vLine.style.left = `${i * 30}px`;
+                gameContainer.appendChild(vLine);
             }
-            ctx.stroke();
         }
 
-        function drawPoint() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
-
-            // 랜덤 점 그리기
-            ctx.fillStyle = "#FFA500";
-            for (let point of randomPoints) {
-                ctx.beginPath();
-                ctx.arc(point[0] * 20, 300 - point[1] * 20, 5, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-
-            // 자취 그리기
-            ctx.beginPath();
-            ctx.strokeStyle = "#4169E1";
-            ctx.lineWidth = 2;
-            ctx.moveTo(path[0][0] * 20, 300 - path[0][1] * 20);
-            for (let i = 1; i < path.length; i++) {
-                ctx.lineTo(path[i][0] * 20, 300 - path[i][1] * 20);
-            }
-            ctx.stroke();
-
-            // 현재 위치 점 그리기
-            ctx.beginPath();
-            ctx.fillStyle = "#FF0000";
-            ctx.arc(x * 20, 300 - y * 20, 7, 0, 2 * Math.PI);
-            ctx.fill();
+        function getRandomPosition() {
+            return {
+                x: Math.floor(Math.random() * 10) + 1,
+                y: Math.floor(Math.random() * 10) + 1
+            };
         }
 
-        function movePoint(dx, dy) {
-            if (!gameStarted) return;
-
-            x = Math.max(0, Math.min(15, x + dx));
-            y = Math.max(0, Math.min(15, y + dy));
-            path.push([x, y]);
-            drawPoint();
-            output.textContent = `위치: (${x}, ${y})`;
-
-            checkPointCollection();
-        }
-
-        function generateRandomPoints() {
-            randomPoints = [];
-            for (let i = 0; i < 10; i++) {
-                let rx, ry;
+        function placePoints() {
+            points = [];
+            for (let i = 0; i < 8; i++) {
+                let point;
                 do {
-                    rx = Math.floor(Math.random() * 16);
-                    ry = Math.floor(Math.random() * 16);
-                } while (randomPoints.some(point => point[0] === rx && point[1] === ry) || (rx === 0 && ry === 0));
-                randomPoints.push([rx, ry]);
+                    point = getRandomPosition();
+                } while (points.some(p => p.x === point.x && p.y === point.y));
+                points.push(point);
+            }
+            renderPoints();
+        }
+
+        function renderPoints() {
+            points.forEach(point => {
+                const pointElement = document.createElement('div');
+                pointElement.classList.add('point');
+                pointElement.style.left = `${point.x * 30}px`;
+                pointElement.style.top = `${point.y * 30}px`;
+                gameContainer.appendChild(pointElement);
+            });
+            updateRemainingPoints();
+        }
+
+        function placePlayer() {
+            playerPosition = { x: 1, y: 1 };
+            renderPlayer();
+        }
+
+        function renderPlayer() {
+            const playerElement = document.createElement('div');
+            playerElement.classList.add('player');
+            playerElement.style.left = `${playerPosition.x * 30}px`;
+            playerElement.style.top = `${playerPosition.y * 30}px`;
+            gameContainer.appendChild(playerElement);
+            updatePlayerPosition();
+        }
+
+        function clearPlayer() {
+            const playerElement = document.querySelector('.player');
+            if (playerElement) {
+                playerElement.remove();
             }
         }
 
-        function checkPointCollection() {
-            for (let i = 0; i < randomPoints.length; i++) {
-                if (x === randomPoints[i][0] && y === randomPoints[i][1]) {
-                    randomPoints.splice(i, 1);
-                    pointsCollected++;
-                    pointsLeftElement.textContent = `남은 점: ${10 - pointsCollected}`;
+        function movePlayer(direction, steps) {
+            if (!gameStarted) return;
+            const oldPosition = {...playerPosition};
+            switch (direction) {
+                case '위':
+                    playerPosition.y = Math.max(1, playerPosition.y - steps);
                     break;
-                }
+                case '아래':
+                    playerPosition.y = Math.min(10, playerPosition.y + steps);
+                    break;
+                case '왼쪽':
+                    playerPosition.x = Math.max(1, playerPosition.x - steps);
+                    break;
+                case '오른쪽':
+                    playerPosition.x = Math.min(10, playerPosition.x + steps);
+                    break;
             }
+            requestAnimationFrame(() => {
+                clearPlayer();
+                renderPlayer();
+                drawLine(oldPosition, playerPosition);
+                checkCollision();
+            });
+        }
 
-            if (randomPoints.length === 0) {
+        function drawLine(start, end) {
+            const line = document.createElement('div');
+            line.classList.add('path-line');
+            const length = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)) * 30;
+            const angle = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI;
+            line.style.width = `${length}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            line.style.left = `${start.x * 30}px`;
+            line.style.top = `${start.y * 30}px`;
+            gameContainer.appendChild(line);
+        }
+
+        function checkCollision() {
+            points.forEach((point, index) => {
+                if (point.x === playerPosition.x && point.y === playerPosition.y) {
+                    const pointElement = document.querySelector(`.point[style*="left: ${point.x * 30}px"][style*="top: ${point.y * 30}px"]`);
+                    pointElement.classList.add('conquered');
+                    points.splice(index, 1);
+                    addCommandToHistory(`이동: ${playerPosition.x}, ${playerPosition.y}`);
+                }
+            });
+            updateRemainingPoints();
+            if (points.length === 0) {
                 endGame();
             }
         }
 
+        function updateRemainingPoints() {
+            remainingPointsElement.textContent = `남은 점: ${points.length}개`;
+        }
+
+        function updatePlayerPosition() {
+            playerPositionElement.textContent = `위치: (${playerPosition.x},${playerPosition.y})`;
+        }
+
         function startGame() {
-            x = 0;
-            y = 0;
-            path = [[x, y]];
-            pointsCollected = 0;
-            generateRandomPoints();
-            drawPoint();
+            if (gameStarted) return;
             gameStarted = true;
+            createGrid();
+            placePoints();
+            placePlayer();
             startTime = Date.now();
-            updateTimer();
-            document.getElementById('start-btn').textContent = '게임 재시작';
+            timer = setInterval(() => {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+                timerElement.textContent = `시간: ${elapsed}초`;
+            }, 100);
+            
+            startSpeechRecognition();
         }
 
         function endGame() {
             gameStarted = false;
-            const endTime = Date.now();
-            const timeTaken = (endTime - startTime) / 1000;
-            alert(`게임 종료! 걸린 시간: ${timeTaken.toFixed(2)}초`);
+            clearInterval(timer);
+            const finalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+            alert(`게임 종료! 소요 시간: ${finalTime}초`);
+            recognition.stop();
         }
 
-        function updateTimer() {
-            if (!gameStarted) return;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'ko-KR';
+
+        function startSpeechRecognition() {
+            recognition.start();
+            micStatusElement.textContent = "마이크 상태: 활성화";
+        }
+
+        recognition.onstart = function() {
+            console.log("음성 인식이 시작되었습니다.");
+            micStatusElement.textContent = "마이크 상태: 활성화";
+        };
+
+        recognition.onresult = function(event) {
+            const result = event.results[event.results.length - 1];
+            const transcript = result[0].transcript.trim().toLowerCase();
+            
+            if (result.isFinal) {
+                processVoiceCommand(transcript);
+            } else {
+                interimCommand = transcript;
+                if (interimCommand.length > 3 && interimCommand !== lastProcessedCommand) {
+                    processVoiceCommand(interimCommand);
+                }
+            }
+        };
+
+        function processVoiceCommand(command) {
+            console.log("인식된 음성:", command);
+            
             const currentTime = Date.now();
-            const elapsedTime = (currentTime - startTime) / 1000;
-            timerElement.textContent = `시간: ${elapsedTime.toFixed(2)}초`;
-            requestAnimationFrame(updateTimer);
-        }
+            if (command === lastProcessedCommand && currentTime - lastCommandTime < 300) {
+                return; // 0.3초 이내에 같은 명령이 반복되면 무시
+            }
+            
+            const directionMap = {
+                '위': '위', '위로': '위', '앞': '위', '앞으로': '위',
+                '아래': '아래', '아래로': '아래', '뒤': '아래', '뒤로': '아래',
+                '왼': '왼쪽', '왼쪽': '왼쪽', '왼쪽으로': '왼쪽',
+                '오른': '오른쪽', '오른쪽': '오른쪽', '오른쪽으로': '오른쪽'
+            };
+            
+            const numberMap = {
+                '한': 1, '하나': 1, '두': 2, '둘': 2, '세': 3, '셋': 3, '네': 4, '넷': 4, '다섯': 5,
+                '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10
+            };
 
-        function setDirection(direction) {
-            currentDirection = direction;
-            if (currentSteps > 0) {
-                move();
+            const regex = /((위|아래|왼|오른|앞|뒤)(?:으?로)?)\s*(한|하나|두|둘|세|셋|네|넷|다섯|여섯|일곱|여덟|아홉|열|\d+)?(?:\s*칸)?/;
+            const matches = command.match(regex);
+
+            if (matches) {
+                const direction = directionMap[matches[1]] || matches[1];
+                let steps = 1;
+                if (matches[3]) {
+                    steps = numberMap[matches[3]] || parseInt(matches[3]) || 1;
+                }
+                movePlayer(direction, steps);
+                addCommandToHistory(command);
+                
+                lastProcessedCommand = command;
+                lastCommandTime = currentTime;
             }
         }
 
-        function setSteps(steps) {
-            currentSteps = steps;
-            if (currentDirection) {
-                move();
-            }
-        }
+        recognition.onerror = function(event) {
+            console.error("음성 인식 오류: ", event.error);
+            micStatusElement.textContent = "마이크 상태: 오류 발생";
+        };
 
-        function move() {
-            switch (currentDirection) {
-                case '위':
-                    movePoint(0, currentSteps);
-                    break;
-                case '아래':
-                    movePoint(0, -currentSteps);
-                    break;
-                case '오른쪽':
-                    movePoint(currentSteps, 0);
-                    break;
-                case '왼쪽':
-                    movePoint(-currentSteps, 0);
-                    break;
+        recognition.onend = function() {
+            console.log("음성 인식이 중단되었습니다. 재시작합니다.");
+            if (gameStarted) {
+                recognition.start();
             }
-            currentDirection = '';
-            currentSteps = 0;
-        }
+        };
 
-        drawPoint();
-    </script>
-</body>
-</html>
+        function addCommandToHistory(command) {
+            const commandItem = document.createElement('li');
+            commandItem.textContent = `${commandIndex++}. ${command}`;
+            commandListElement.appendChild(commandItem);​​​​​​​​​​​​​​​​
